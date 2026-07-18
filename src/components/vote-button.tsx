@@ -48,8 +48,13 @@ export function VoteButton({
         disabled={pending}
         aria-pressed={active}
         aria-label={active ? "Remove upvote" : "Upvote"}
+        // Voted state was carried by accent colour, which no longer differs
+        // from body text. It inverts instead: the only filled control on the
+        // page, so "I voted" is unmistakable without a hue.
         className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
-          active ? "text-accent-text font-medium" : "text-text-secondary hover:bg-hover-bg"
+          active
+            ? "bg-accent text-on-accent font-medium"
+            : "text-text-secondary hover:bg-hover-bg"
         }`}
       >
         <span aria-hidden>▲</span>

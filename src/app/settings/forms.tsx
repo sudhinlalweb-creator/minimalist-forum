@@ -20,7 +20,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-raised shadow-elev-0 mb-5 rounded-xl p-6">
+    <section className="bg-raised border-border border mb-5 rounded-xl p-6">
       <h2 className="text-md text-text font-semibold tracking-[-0.01em]">{title}</h2>
       {description ? (
         <p className="text-xs text-text-secondary mt-1.5 mb-4 leading-relaxed">
@@ -72,7 +72,7 @@ export function SettingsForms({
               rows={3}
               defaultValue={bio}
               maxLength={500}
-              className="bg-bg text-text placeholder:text-text-tertiary focus:ring-accent w-full resize-none rounded-md px-3 py-2.5 text-base outline-none focus:ring-2"
+              className="bg-bg border-border text-text placeholder:text-text-tertiary focus:ring-accent w-full resize-none rounded-md border px-3 py-2.5 text-base outline-none focus:ring-2"
             />
           </label>
           <SubmitButton pending={profilePending}>Save profile</SubmitButton>

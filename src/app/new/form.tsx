@@ -20,7 +20,7 @@ export function NewThreadForm({
   );
 
   return (
-    <form action={action} className="bg-raised shadow-elev-1 rounded-xl p-6">
+    <form action={action} className="bg-raised border-border border rounded-xl p-6">
       <FormError>{state.error}</FormError>
       {!verified ? (
         <FormNotice>
@@ -34,7 +34,7 @@ export function NewThreadForm({
         <select
           name="categoryId"
           defaultValue={defaultCategoryId}
-          className="bg-bg text-text focus:ring-accent w-full rounded-md px-3 py-2.5 text-base outline-none focus:ring-2"
+          className="bg-bg border-border text-text focus:ring-accent w-full rounded-md border px-3 py-2.5 text-base outline-none focus:ring-2"
         >
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -58,7 +58,7 @@ export function NewThreadForm({
           name="body"
           rows={10}
           required
-          className="bg-bg text-text placeholder:text-text-tertiary focus:ring-accent w-full resize-y rounded-md px-3 py-2.5 text-base leading-relaxed outline-none focus:ring-2"
+          className="bg-bg border-border text-text placeholder:text-text-tertiary focus:ring-accent w-full resize-y rounded-md border px-3 py-2.5 text-base leading-relaxed outline-none focus:ring-2"
         />
       </label>
 

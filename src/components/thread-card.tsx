@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { elevationForReplies, surfaceForReplies } from "@/lib/elevation";
+import { activityForReplies } from "@/lib/elevation";
 import type { ThreadCard as ThreadCardData } from "@/lib/queries/forum";
 import { threadPath } from "@/lib/slug";
 
@@ -14,14 +14,15 @@ function formatDate(date: Date): string {
 
 /**
  * Depth signals activity instead of a count badge, per the design
- * ("Depth by shading only"). The whole card is a real anchor, so the thread is
- * crawlable and middle-clickable — the prototype opened threads via client
- * state, which no crawler could follow.
+ * ("Depth by shading only") — carried here by border weight and fill rather
+ * than shadow, since the surface treatment is flat. The whole card is a real
+ * anchor, so the thread is crawlable and middle-clickable — the prototype
+ * opened threads via client state, which no crawler could follow.
  */
 export function ThreadCard({ thread }: { thread: ThreadCardData }) {
   return (
     <article
-      className={`rounded-xl ${surfaceForReplies(thread.replyCount)} ${elevationForReplies(thread.replyCount)}`}
+      className={`rounded-xl ${activityForReplies(thread.replyCount)}`}
     >
       <div className="px-5 py-4.5">
         <div className="mb-2.5 flex items-center gap-2.5">
@@ -40,11 +41,17 @@ export function ThreadCard({ thread }: { thread: ThreadCardData }) {
           >
             {formatDate(thread.createdAt)}
           </time>
+          {/* With no accent hue available, status reads as an outlined chip:
+              pinned takes the stronger border, locked the quieter one. */}
           {thread.isPinned ? (
-            <span className="text-2xs text-accent-text font-medium">Pinned</span>
+            <span className="text-2xs text-text border-border-strong rounded-sm border px-1.5 py-0.5 font-medium">
+              Pinned
+            </span>
           ) : null}
           {thread.isLocked ? (
-            <span className="text-2xs text-text-tertiary font-medium">Locked</span>
+            <span className="text-2xs text-text-tertiary border-border rounded-sm border px-1.5 py-0.5 font-medium">
+              Locked
+            </span>
           ) : null}
         </div>
 
@@ -62,7 +69,9 @@ export function ThreadCard({ thread }: { thread: ThreadCardData }) {
           <span>
             {thread.replyCount} {thread.replyCount === 1 ? "reply" : "replies"}
           </span>
-          <Link href={`/c/${thread.categorySlug}`}>{thread.categoryName}</Link>
+          <Link href={`/c/${thread.categorySlug}`} className="hover:underline">
+            {thread.categoryName}
+          </Link>
         </div>
       </div>
     </article>

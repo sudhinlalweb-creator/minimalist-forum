@@ -23,7 +23,7 @@ export function ReplyForm({ threadId }: { threadId: number }) {
     <form
       ref={formRef}
       action={action}
-      className="bg-raised shadow-elev-1 mt-5 rounded-xl px-4 py-4 md:px-5"
+      className="bg-raised border-border border mt-5 rounded-xl px-4 py-4 md:px-5"
     >
       <FormError>{state.error}</FormError>
       <input type="hidden" name="threadId" value={threadId} />

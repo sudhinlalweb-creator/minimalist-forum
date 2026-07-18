@@ -185,7 +185,7 @@ export default async function ThreadPage({ params }: Params) {
           <Link href={`/c/${thread.categorySlug}`}>{thread.categoryName}</Link>
         </nav>
 
-        <article className="bg-raised shadow-elev-2 rounded-xl px-5 py-5 md:px-6">
+        <article className="bg-raised border-border border rounded-xl px-5 py-5 md:px-6">
           <div className="mb-3 flex items-center gap-2.5">
             <span className="bg-avatar-bg text-avatar-text flex size-6.5 items-center justify-center rounded-md text-xs font-semibold">
               {thread.authorName.charAt(0).toUpperCase()}
@@ -235,7 +235,7 @@ export default async function ThreadPage({ params }: Params) {
             <article
               key={reply.id}
               id={`reply-${reply.id}`}
-              className="bg-raised shadow-elev-0 rounded-xl px-4 py-4 md:px-5"
+              className="bg-raised border-border border rounded-xl px-4 py-4 md:px-5"
             >
               {reply.isDeleted ? (
                 <p className="text-sm text-text-tertiary italic">
@@ -283,7 +283,7 @@ export default async function ThreadPage({ params }: Params) {
         {can(actor, "post:create", { threadLocked: thread.isLocked }) ? (
           <ReplyForm threadId={thread.id} />
         ) : (
-          <p className="text-sm text-text-secondary bg-raised shadow-elev-0 mt-5 rounded-xl px-5 py-4">
+          <p className="text-sm text-text-secondary bg-raised border-border border mt-5 rounded-xl px-5 py-4">
             {thread.isLocked
               ? "This thread is locked and isn't accepting replies."
               : !actor.id

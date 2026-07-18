@@ -17,7 +17,7 @@ export function FormCard({
   footer?: ReactNode;
 }) {
   return (
-    <div className="bg-raised shadow-elev-1 w-full max-w-[400px] rounded-xl p-6">
+    <div className="bg-raised border-border border w-full max-w-[400px] rounded-xl p-6">
       <h1 className="text-lg text-text font-bold tracking-[-0.015em]">{title}</h1>
       {description ? (
         <p className="text-xs text-text-secondary mt-2 leading-relaxed">
@@ -48,7 +48,7 @@ export function Field({
         name={name}
         id={name}
         aria-describedby={hintId}
-        className="bg-bg text-text placeholder:text-text-tertiary focus:ring-accent w-full rounded-md px-3 py-2.5 text-base outline-none focus:ring-2"
+        className="bg-bg border-border text-text placeholder:text-text-tertiary focus:ring-accent w-full rounded-md border px-3 py-2.5 text-base outline-none focus:ring-2"
         {...props}
       />
       {hint ? (
@@ -78,11 +78,19 @@ export function SubmitButton({
   );
 }
 
-/** Errors use text weight rather than a red fill, matching the flat design. */
+/**
+ * An achromatic palette has no red to signal an error with, so weight and a
+ * bounded surface carry it instead: body-colour text at medium weight on the
+ * hover fill, behind the strong border. role="alert" means the message is
+ * still announced regardless of how it looks.
+ */
 export function FormError({ children }: { children?: ReactNode }) {
   if (!children) return null;
   return (
-    <p role="alert" className="text-sm mb-4 font-medium text-[oklch(65%_0.19_25)]">
+    <p
+      role="alert"
+      className="text-sm text-text bg-hover-bg border-border-strong mb-4 rounded-sm border px-3 py-2 font-medium"
+    >
       {children}
     </p>
   );

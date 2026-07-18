@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/lib/db";
-import { elevationForReplies, surfaceForReplies } from "@/lib/elevation";
+import { activityForReplies } from "@/lib/elevation";
 import { getProfileByUsername } from "@/lib/queries/profile";
 import { threadPath } from "@/lib/slug";
 
@@ -158,7 +158,7 @@ export default async function ProfilePage({ params }: Params) {
                 <Link
                   key={thread.id}
                   href={threadPath(thread.categorySlug, thread.slug, thread.id)}
-                  className={`rounded-xl px-5 py-4 ${surfaceForReplies(thread.replyCount)} ${elevationForReplies(thread.replyCount)}`}
+                  className={`rounded-xl px-5 py-4 ${activityForReplies(thread.replyCount)}`}
                 >
                   <h3 className="text-md text-text font-semibold tracking-[-0.01em]">
                     {thread.title}
