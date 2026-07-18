@@ -10,6 +10,7 @@ import { getActor } from "@/lib/auth/current-user";
 import { can } from "@/lib/auth/permissions";
 import { getUserVotes } from "@/lib/mutations/forum";
 import { getDb } from "@/lib/db";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { excerpt, getRelatedThreads, getThreadById } from "@/lib/queries/forum";
 import { parseThreadId, threadPath } from "@/lib/slug";
 
@@ -167,7 +168,7 @@ export default async function ThreadPage({ params }: Params) {
     <div className="min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <SiteHeader />
 

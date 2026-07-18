@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // OpenNext's Cloudflare bundle. Generated output, already gitignored, but
+    // ESLint does not read .gitignore — without this it reports ~17k problems
+    // in vendored code and `npm run lint` stops being usable as a signal.
+    ".open-next/**",
   ]),
 ]);
 

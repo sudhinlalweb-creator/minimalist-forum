@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/lib/db";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { activityForReplies } from "@/lib/elevation";
 import { getProfileByUsername } from "@/lib/queries/profile";
 import { threadPath } from "@/lib/slug";
@@ -103,7 +104,7 @@ export default async function ProfilePage({ params }: Params) {
       <script
         type="application/ld+json"
         // Server-rendered so crawlers see it without executing JS.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <SiteHeader />
 

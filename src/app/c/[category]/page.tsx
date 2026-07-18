@@ -7,6 +7,7 @@ import { Pagination } from "@/components/pagination";
 import { SiteHeader } from "@/components/site-header";
 import { ThreadCard } from "@/components/thread-card";
 import { getDb } from "@/lib/db";
+import { serializeJsonLd } from "@/lib/json-ld";
 import {
   THREADS_PER_PAGE,
   getCategoryBySlug,
@@ -129,7 +130,7 @@ export default async function CategoryPage({ params, searchParams }: Params) {
     <div className="min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <SiteHeader />
       <div className="flex flex-col md:flex-row">
