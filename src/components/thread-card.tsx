@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Avatar } from "@/components/avatar";
 import { activityForReplies } from "@/lib/elevation";
 import type { ThreadCard as ThreadCardData } from "@/lib/queries/forum";
 import { threadPath } from "@/lib/slug";
@@ -26,9 +27,7 @@ export function ThreadCard({ thread }: { thread: ThreadCardData }) {
     >
       <div className="px-5 py-4.5">
         <div className="mb-2.5 flex items-center gap-2.5">
-          <span className="bg-avatar-bg text-avatar-text flex size-6.5 items-center justify-center rounded-md text-xs font-semibold">
-            {thread.authorName.charAt(0).toUpperCase()}
-          </span>
+          <Avatar name={thread.authorUsername} size={26} />
           <Link
             href={`/u/${thread.authorUsername}`}
             className="text-sm text-text font-medium hover:underline"

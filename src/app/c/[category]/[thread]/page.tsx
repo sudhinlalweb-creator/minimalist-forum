@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
+import { Avatar } from "@/components/avatar";
 import { ReplyForm } from "@/components/reply-form";
 import { SiteHeader } from "@/components/site-header";
 import { VoteButton } from "@/components/vote-button";
@@ -187,9 +188,7 @@ export default async function ThreadPage({ params }: Params) {
 
         <article className="bg-raised border-border border rounded-xl px-5 py-5 md:px-6">
           <div className="mb-3 flex items-center gap-2.5">
-            <span className="bg-avatar-bg text-avatar-text flex size-6.5 items-center justify-center rounded-md text-xs font-semibold">
-              {thread.authorName.charAt(0).toUpperCase()}
-            </span>
+            <Avatar name={thread.authorUsername} size={26} />
             <Link
               href={`/u/${thread.authorUsername}`}
               className="text-sm text-text font-medium hover:underline"
@@ -244,9 +243,7 @@ export default async function ThreadPage({ params }: Params) {
               ) : (
                 <>
                   <div className="mb-2 flex items-center gap-2.5">
-                    <span className="bg-avatar-bg text-avatar-text flex size-6.5 items-center justify-center rounded-md text-xs font-semibold">
-                      {reply.authorName.charAt(0).toUpperCase()}
-                    </span>
+                    <Avatar name={reply.authorUsername} size={26} />
                     <Link
                       href={`/u/${reply.authorUsername}`}
                       className="text-sm text-text font-medium hover:underline"

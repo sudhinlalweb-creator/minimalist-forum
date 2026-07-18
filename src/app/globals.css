@@ -21,7 +21,6 @@
 :root {
   --bg: #ffffff;
   --raised: #ffffff;
-  --raised-hot: #f7f7f7;
   --text: #191919;
   --text-secondary: #6f6f6f;
   --text-tertiary: #9b9b9b;
@@ -37,12 +36,24 @@
   --accent-glow: rgb(25 25 25 / 0.12);
   --on-accent: #ffffff;
 
-  --avatar-bg: #ebebeb;
-  --avatar-text: #373737;
-  --track-bg: #ebebeb;
+  --scrollbar-thumb: #ebebeb;
 
   --border: #e6e6e6;
   --border-strong: #d4d4d4;
+
+  /* Generated-avatar ramp, consumed by components/avatar.tsx. Kept as custom
+     properties rather than literals so the SVG fills resolve in the browser
+     and follow the theme.
+
+     The ramp deliberately stops short of the page background at both ends.
+     boring-avatars picks fills per shape from the whole array, so a mark that
+     draws mostly from a near-white step reads as an empty tile on a white
+     page — the range is compressed to keep every mark legible. */
+  --avatar-1: #c4c4c4;
+  --avatar-2: #9a9a9a;
+  --avatar-3: #707070;
+  --avatar-4: #4a4a4a;
+  --avatar-5: #242424;
 
   /* Activity ramp. The design signals thread activity with depth rather than
      a count badge ("Depth by shading only"). Notion has no drop shadows to
@@ -62,7 +73,6 @@
 [data-theme="dark"] {
   --bg: #191919;
   --raised: #202020;
-  --raised-hot: #2b2b2b;
   --text: #ededed;
   --text-secondary: #9b9b9b;
   --text-tertiary: #6f6f6f;
@@ -75,12 +85,19 @@
   --accent-glow: rgb(255 255 255 / 0.16);
   --on-accent: #191919;
 
-  --avatar-bg: #333333;
-  --avatar-text: #d4d4d4;
-  --track-bg: #333333;
+  --scrollbar-thumb: #333333;
 
   --border: #2f2f2f;
   --border-strong: #454545;
+
+  /* Inverted: the ramp runs dark-to-light so a mark keeps the same contrast
+     against a near-black page that it had against a white one, and stops
+     short of the background at both ends for the same reason. */
+  --avatar-1: #3d3d3d;
+  --avatar-2: #5c5c5c;
+  --avatar-3: #7d7d7d;
+  --avatar-4: #a0a0a0;
+  --avatar-5: #c4c4c4;
 
   /* The ramp inverts: hotter threads get lighter, not darker, so "more
      activity" still reads as "closer to the viewer" against a dark page. */
@@ -97,7 +114,6 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-raised: var(--raised);
-  --color-raised-hot: var(--raised-hot);
   --color-text: var(--text);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
@@ -106,9 +122,6 @@
   --color-accent: var(--accent);
   --color-accent-text: var(--accent-text);
   --color-accent-text-hover: var(--accent-text-hover);
-  --color-avatar-bg: var(--avatar-bg);
-  --color-avatar-text: var(--avatar-text);
-  --color-track-bg: var(--track-bg);
   --color-on-accent: var(--on-accent);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
@@ -192,7 +205,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--avatar-bg);
+    background: var(--scrollbar-thumb);
     border-radius: 8px;
   }
 

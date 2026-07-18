@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Avatar } from "@/components/avatar";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/lib/db";
 import { activityForReplies } from "@/lib/elevation";
@@ -110,9 +111,7 @@ export default async function ProfilePage({ params }: Params) {
         <article>
           <header className="mb-8">
             <div className="mb-4 flex items-center gap-3">
-              <div className="bg-avatar-bg text-avatar-text flex size-12 items-center justify-center rounded-md text-md font-semibold">
-                {profile.displayName.charAt(0).toUpperCase()}
-              </div>
+              <Avatar name={profile.username} size={48} />
               <div>
                 <h1 className="text-lg text-text font-bold tracking-[-0.015em]">
                   {profile.displayName}
