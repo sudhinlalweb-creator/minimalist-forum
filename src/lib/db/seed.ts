@@ -291,10 +291,17 @@ export async function seed(db: SeedDb) {
 }
 
 async function main() {
-  // getDb() picks Neon when DATABASE_URL is set and local PGlite otherwise,
-  // so the seed follows whichever database the app itself would use.
-  const { getDb } = await import("./index");
-  await seed((await getDb()) as unknown as SeedDb);
+  if (process.env.DATABASE_URL) {
+    const { getDb } = await import("./index");
+    await seed((await getDb()) as unknown as SeedDb);
+    return;
+  }
+
+  console.warn(
+    "[db:seed] No DATABASE_URL — using local PGlite at .pglite for script-only seeding.",
+  );
+  const { createDevDb } = await import("./dev");
+  await seed((await createDevDb(".pglite")) as unknown as SeedDb);
 }
 
 main().catch((err) => {
