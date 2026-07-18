@@ -277,15 +277,20 @@ export default async function ThreadPage({ params }: Params) {
           ))}
         </div>
 
-        {can(actor, "post:create", { threadLocked: thread.isLocked }) ? (
-          <ReplyForm threadId={thread.id} />
+        {/* Guests get the composer too, and are asked to authenticate when
+            they submit — but only where signing in would actually let them
+            post. On a locked thread, or with an unverified email, the block
+            survives sign-in, so say so up front rather than take a reply and
+            refuse it. Moderators bypass locks, hence the permission check
+            rather than a bare isLocked test. */}
+        {can(actor, "post:create", { threadLocked: thread.isLocked }) ||
+        (!actor.id && !thread.isLocked) ? (
+          <ReplyForm threadId={thread.id} isGuest={!actor.id} />
         ) : (
           <p className="text-sm text-text-secondary bg-raised border-border border mt-5 rounded-xl px-5 py-4">
             {thread.isLocked
               ? "This thread is locked and isn't accepting replies."
-              : !actor.id
-                ? <><Link href="/login">Sign in</Link> to reply to this thread.</>
-                : "Confirm your email address to reply."}
+              : "Confirm your email address to reply."}
           </p>
         )}
 
