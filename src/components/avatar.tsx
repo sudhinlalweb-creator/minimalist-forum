@@ -20,9 +20,11 @@ import BoringAvatar from "boring-avatars";
  * `bauhaus` over the softer variants because its hard edges hold their shape
  * at 26px; `marble` blurred into an indistinct wash at that size.
  *
- * `square` is on because the design uses rounded squares, not circles; the
- * library's default is a full circle. The radius comes from the token scale
- * via rounded-md, matching every other avatar-sized surface.
+ * Circular, which is the library's own default — `square` is left off so the
+ * mask is a full circle rather than clipped by CSS, keeping the shape in the
+ * SVG where the marks are generated. Avatars are the one round element in a
+ * design of rounded squares; that is deliberate, and it reinforces the same
+ * separation the colour does — a person is not a surface.
  */
 const AVATAR_PALETTE = [
   "var(--avatar-1)",
@@ -47,9 +49,8 @@ export function Avatar({
       name={name}
       variant="bauhaus"
       size={size}
-      square
       colors={AVATAR_PALETTE}
-      className={`rounded-md ${className}`}
+      className={`rounded-full ${className}`}
     />
   );
 }
