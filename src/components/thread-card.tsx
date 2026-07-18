@@ -65,7 +65,10 @@ export function ThreadCard({ thread }: { thread: ThreadCardData }) {
         </p>
 
         <div className="text-xs text-text-secondary flex items-center gap-4">
-          <span>
+          {/* Reply count is the one meta value worth scanning for, so it takes
+              a filled chip while the rest of the row stays quiet. With no
+              accent hue, fill and weight are what "emphasised" is made of. */}
+          <span className="bg-hover-bg text-text rounded-sm px-2 py-1 font-medium">
             {thread.replyCount} {thread.replyCount === 1 ? "reply" : "replies"}
           </span>
           <Link href={`/c/${thread.categorySlug}`} className="hover:underline">

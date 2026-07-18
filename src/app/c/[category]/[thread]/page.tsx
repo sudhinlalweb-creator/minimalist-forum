@@ -224,7 +224,7 @@ export default async function ThreadPage({ params }: Params) {
             initialScore={thread.voteScore}
             initialVote={threadVotes.get(thread.id) ?? 0}
           />
-          <p className="text-xs text-text-secondary">
+          <p className="text-xs text-text bg-hover-bg rounded-sm px-2 py-1 font-medium">
             {thread.replyCount} {thread.replyCount === 1 ? "reply" : "replies"}
           </p>
         </div>
