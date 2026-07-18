@@ -6,40 +6,14 @@
  * "Minimalist Forum UI" (Forum.dc.html). Do not introduce ad hoc colour,
  * spacing, or radius values outside this file.
  *
- * The design is dark-first with an explicit user toggle (not a
- * prefers-color-scheme reaction), so dark lives on :root and light is opted
- * into via [data-theme="light"] on <html>.
+ * Light is the served default, so it lives on :root and dark is opted into
+ * via [data-theme="dark"] on <html>. Both palettes are the design's own —
+ * this is a switch of which one is default, not a re-tint. The toggle is an
+ * explicit user choice rather than a prefers-color-scheme reaction, so an
+ * unset preference always renders light.
  */
 
 :root {
-  --bg: #0b0d10;
-  --raised: #14171b;
-  --raised-hot: #161a1f;
-  --text: #e6e8eb;
-  --text-secondary: #8a8f98;
-  --text-tertiary: #5b6068;
-  --comment-text: #c7cad0;
-  --hover-bg: #121519;
-  --accent: oklch(65% 0.16 275);
-  --accent-text: oklch(72% 0.14 275);
-  --accent-text-hover: oklch(78% 0.15 275);
-  --accent-glow: oklch(72% 0.16 275 / 0.55);
-  --avatar-bg: #1c2026;
-  --avatar-text: #c7cad0;
-  --track-bg: #1c2026;
-  --on-accent: #0b0d10;
-
-  /* Elevation ramp. The design derives shadow from reply count on a
-     continuous curve (heatShadow); we quantise it to four steps so the
-     value set stays tokenised and server-renderable. See lib/elevation.ts. */
-  --elev-0: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.24);
-  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 19px rgb(0 0 0 / 0.29);
-  --elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 26px 1px rgb(0 0 0 / 0.35);
-  --elev-3: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 32px 2px rgb(0 0 0 / 0.4);
-  --elev-hover: 0 3px 6px rgb(0 0 0 / 0.45), 0 10px 28px rgb(0 0 0 / 0.46);
-}
-
-[data-theme="light"] {
   --bg: #f6f6f7;
   --raised: #ffffff;
   --raised-hot: #ffffff;
@@ -57,11 +31,39 @@
   --track-bg: #e3e4e7;
   --on-accent: #ffffff;
 
+  /* Elevation ramp. The design derives shadow from reply count on a
+     continuous curve (heatShadow); we quantise it to four steps so the
+     value set stays tokenised and server-renderable. See lib/elevation.ts. */
   --elev-0: 0 1px 2px rgb(20 20 25 / 0.08), 0 4px 12px rgb(20 20 25 / 0.05);
   --elev-1: 0 1px 2px rgb(20 20 25 / 0.08), 0 4px 19px rgb(20 20 25 / 0.07);
   --elev-2: 0 1px 2px rgb(20 20 25 / 0.08), 0 4px 26px 1px rgb(20 20 25 / 0.1);
   --elev-3: 0 1px 2px rgb(20 20 25 / 0.08), 0 4px 32px 2px rgb(20 20 25 / 0.12);
   --elev-hover: 0 3px 6px rgb(20 20 25 / 0.13), 0 10px 28px rgb(20 20 25 / 0.18);
+}
+
+[data-theme="dark"] {
+  --bg: #0b0d10;
+  --raised: #14171b;
+  --raised-hot: #161a1f;
+  --text: #e6e8eb;
+  --text-secondary: #8a8f98;
+  --text-tertiary: #5b6068;
+  --comment-text: #c7cad0;
+  --hover-bg: #121519;
+  --accent: oklch(65% 0.16 275);
+  --accent-text: oklch(72% 0.14 275);
+  --accent-text-hover: oklch(78% 0.15 275);
+  --accent-glow: oklch(72% 0.16 275 / 0.55);
+  --avatar-bg: #1c2026;
+  --avatar-text: #c7cad0;
+  --track-bg: #1c2026;
+  --on-accent: #0b0d10;
+
+  --elev-0: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.24);
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 19px rgb(0 0 0 / 0.29);
+  --elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 26px 1px rgb(0 0 0 / 0.35);
+  --elev-3: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 32px 2px rgb(0 0 0 / 0.4);
+  --elev-hover: 0 3px 6px rgb(0 0 0 / 0.45), 0 10px 28px rgb(0 0 0 / 0.46);
 }
 
 @theme inline {
@@ -116,39 +118,47 @@
   }
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
-  color: var(--text);
-}
+/*
+ * These element defaults must sit in @layer base. Unlayered CSS outranks
+ * every layered rule in the cascade regardless of specificity, so an
+ * unlayered `a { color }` would beat Tailwind's text-* utilities — which is
+ * how the Join button ended up with accent text on an accent background.
+ */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
 
-::selection {
-  background: oklch(65% 0.16 275 / 0.35);
-}
+  ::selection {
+    background: var(--accent-glow);
+  }
 
-a {
-  color: var(--accent-text);
-  text-decoration: none;
-}
+  a {
+    color: var(--accent-text);
+    text-decoration: none;
+  }
 
-a:hover {
-  color: var(--accent-text-hover);
-}
+  a:hover {
+    color: var(--accent-text-hover);
+  }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--avatar-bg);
-  border-radius: 8px;
-}
+  ::-webkit-scrollbar-thumb {
+    background: var(--avatar-bg);
+    border-radius: 8px;
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

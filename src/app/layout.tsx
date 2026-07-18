@@ -31,9 +31,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The design is dark-first with an explicit toggle rather than a
-    // prefers-color-scheme reaction, so dark is the served default and the
-    // Phase 5 toggle flips data-theme="light".
+    // Light is the served default (tokens on :root in globals.css) and the
+    // Phase 5 toggle will flip data-theme="dark". No data-theme attribute is
+    // set here, so a request with no stored preference renders light.
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="bg-bg text-text min-h-full font-sans antialiased">
         {children}
