@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784358050416,
+      "tag": "0000_common_salo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784359003722,
+      "tag": "0001_add_sessions_valid_after",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784359379823,
+      "tag": "0002_add_auth_attempts",
+      "breakpoints": true
+    }
+  ]
+}
