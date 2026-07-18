@@ -4,6 +4,7 @@ import { afterEach, describe, it } from "node:test";
 import {
   consoleMailer,
   createMemoryMailer,
+  createResendMailer,
   getMailer,
   passwordResetUrl,
   sendPasswordResetEmail,
@@ -14,6 +15,8 @@ import {
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+const ORIGINAL_RESEND_KEY = process.env.RESEND_API_KEY;
+const ORIGINAL_EMAIL_FROM = process.env.EMAIL_FROM;
 
 /** NODE_ENV is declared as a literal union, so widen to write to it. */
 const env = process.env as Record<string, string | undefined>;
@@ -32,6 +35,10 @@ afterEach(() => {
   setMailer(null);
   restore("NEXT_PUBLIC_SITE_URL", ORIGINAL_SITE_URL);
   restore("NODE_ENV", ORIGINAL_NODE_ENV);
+  // getMailer() now reads these, so a test that sets one would otherwise
+  // decide which transport a later test gets.
+  restore("RESEND_API_KEY", ORIGINAL_RESEND_KEY);
+  restore("EMAIL_FROM", ORIGINAL_EMAIL_FROM);
 });
 
 describe("link builders", () => {
@@ -152,5 +159,117 @@ describe("outbound messages", () => {
     await sendVerificationEmail("a@b.co", "t");
 
     assert.equal(mailer.sent.length, 1);
+  });
+});
+
+describe("createResendMailer", () => {
+  /** Minimal stand-in for the one Resend endpoint this transport calls. */
+  function stubFetch(
+    handler: (url: string, init: RequestInit) => Response,
+  ): { calls: Array<{ url: string; init: RequestInit }>; impl: typeof fetch } {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const impl = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return handler(url, init);
+    }) as unknown as typeof fetch;
+    return { calls, impl };
+  }
+
+  it("posts the message to Resend in the documented shape", async () => {
+    const { calls, impl } = stubFetch(() => new Response("{}", { status: 200 }));
+
+    await createResendMailer({
+      apiKey: "test-key",
+      from: "Meridian <no-reply@example.com>",
+      fetchImpl: impl,
+    }).send({ to: "user@example.com", subject: "Verify", text: "link" });
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://api.resend.com/emails");
+    assert.equal(calls[0].init.method, "POST");
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    assert.equal(headers.authorization, "Bearer test-key");
+
+    // `to` is an array in Resend's API even for a single recipient.
+    assert.deepEqual(JSON.parse(calls[0].init.body as string), {
+      from: "Meridian <no-reply@example.com>",
+      to: ["user@example.com"],
+      subject: "Verify",
+      text: "link",
+    });
+  });
+
+  it("throws on a rejected send instead of dropping it silently", async () => {
+    const { impl } = stubFetch(
+      () => new Response('{"message":"domain not verified"}', { status: 403 }),
+    );
+
+    const mailer = createResendMailer({
+      apiKey: "k",
+      from: "a@b.co",
+      fetchImpl: impl,
+    });
+
+    await assert.rejects(
+      () => mailer.send({ to: "u@e.co", subject: "s", text: "t" }),
+      /HTTP 403[\s\S]*domain not verified/,
+    );
+  });
+
+  it("never puts the api key in the error it throws", async () => {
+    const { impl } = stubFetch(() => new Response("bad", { status: 401 }));
+
+    const mailer = createResendMailer({
+      apiKey: "super-secret-key",
+      from: "a@b.co",
+      fetchImpl: impl,
+    });
+
+    // The message reaches logs, which are far less protected than the secret.
+    const error = await mailer
+      .send({ to: "u@e.co", subject: "s", text: "t" })
+      .then(() => null, (e: Error) => e);
+
+    assert.ok(error);
+    assert.ok(!error.message.includes("super-secret-key"));
+  });
+});
+
+describe("getMailer — production wiring", () => {
+  it("builds a Resend transport when both vars are set", () => {
+    env.RESEND_API_KEY = "k";
+    env.EMAIL_FROM = "a@b.co";
+    setMailer(null);
+
+    // Not the console transport, i.e. a real one was constructed.
+    assert.notEqual(getMailer(), consoleMailer);
+  });
+
+  it("names the missing var when only one is set in production", () => {
+    env.NODE_ENV = "production";
+    env.RESEND_API_KEY = "k";
+    delete env.EMAIL_FROM;
+    setMailer(null);
+
+    assert.throws(() => getMailer(), /missing EMAIL_FROM/);
+  });
+
+  it("still throws in production when neither is set", () => {
+    env.NODE_ENV = "production";
+    delete env.RESEND_API_KEY;
+    delete env.EMAIL_FROM;
+    setMailer(null);
+
+    assert.throws(() => getMailer(), /RESEND_API_KEY and EMAIL_FROM/);
+  });
+
+  it("an explicit setMailer still wins over the env vars", () => {
+    env.RESEND_API_KEY = "k";
+    env.EMAIL_FROM = "a@b.co";
+    const memory = createMemoryMailer();
+    setMailer(memory);
+
+    assert.equal(getMailer(), memory);
   });
 });

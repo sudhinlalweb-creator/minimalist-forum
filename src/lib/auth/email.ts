@@ -40,6 +40,50 @@ export function createMemoryMailer(): Mailer & { sent: EmailMessage[] } {
   };
 }
 
+/**
+ * Resend over plain `fetch` rather than the `resend` SDK.
+ *
+ * The app deploys to a Cloudflare Worker with a 3 MiB gzipped ceiling that a
+ * PGlite import has already blown once. This transport is one request against
+ * a documented endpoint, so pulling a dependency in to make it would spend
+ * bundle budget on nothing.
+ *
+ * @param from Must be an address on a domain verified in Resend. Resend
+ *   rejects unverified senders, so a wrong value here fails every send.
+ */
+export function createResendMailer(options: {
+  apiKey: string;
+  from: string;
+  fetchImpl?: typeof fetch;
+}): Mailer {
+  const { apiKey, from, fetchImpl = fetch } = options;
+
+  return {
+    async send({ to, subject, text }) {
+      const response = await fetchImpl("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ from, to: [to], subject, text }),
+      });
+
+      if (!response.ok) {
+        // Resend puts the reason in the body; the status alone rarely says
+        // enough to tell a bad key from an unverified domain. Nothing here
+        // interpolates the key — this message reaches logs.
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+          `Resend rejected the message (HTTP ${response.status})${
+            detail ? `: ${detail.slice(0, 300)}` : ""
+          }`,
+        );
+      }
+    },
+  };
+}
+
 let configured: Mailer | null = null;
 
 /** Override the transport (composition root, tests). */
@@ -50,10 +94,26 @@ export function setMailer(mailer: Mailer | null): void {
 export function getMailer(): Mailer {
   if (configured) return configured;
 
+  // Resolved per call rather than at module load: on Workers there is no
+  // composition root that reliably runs before the first request, and secrets
+  // are not guaranteed to be readable at module-init time.
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+
+  if (apiKey && from) return createResendMailer({ apiKey, from });
+
   if (process.env.NODE_ENV === "production") {
     // Failing loudly beats silently dropping verification email in production.
+    // Naming the missing half matters: setting only one of the two looks
+    // configured from the dashboard but sends nothing.
+    const missing = [
+      apiKey ? null : "RESEND_API_KEY",
+      from ? null : "EMAIL_FROM",
+    ].filter(Boolean);
+
     throw new Error(
-      "No mailer configured. Wire a real transport (e.g. Resend) via setMailer() before deploying.",
+      `No mailer configured — missing ${missing.join(" and ")}. Set both, or ` +
+        "wire a transport via setMailer() before deploying.",
     );
   }
 
