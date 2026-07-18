@@ -347,3 +347,131 @@ describe("getUserVotes", () => {
     assert.equal(map.size, 0);
   });
 });
+
+/**
+ * Counters are derived from the rows they summarise rather than adjusted by a
+ * delta, because the app runs on Neon's HTTP driver where a mutation and its
+ * counter update are separate, untransacted round trips. These tests corrupt a
+ * counter first and assert the next write repairs it — under an increment or
+ * decrement they would compound the corruption instead, so they fail against a
+ * delta implementation.
+ */
+describe("counters are self-repairing", () => {
+  it("recomputes reply_count on reply rather than incrementing drift", async () => {
+    const author = await makeActor();
+    const threadId = await makeThread(author);
+
+    await createReply(db, author, threadId, BODY, NOW);
+
+    // Simulate a counter update that was lost to a failed round trip.
+    await db.update(threads).set({ replyCount: 99 }).where(eq(threads.id, threadId));
+
+    await createReply(db, author, threadId, BODY, NOW);
+
+    const [row] = await db
+      .select({ replyCount: threads.replyCount })
+      .from(threads)
+      .where(eq(threads.id, threadId));
+
+    // Two real replies. A `+ 1` would have produced 100.
+    assert.equal(row.replyCount, 2);
+  });
+
+  it("recomputes reply_count on delete rather than decrementing drift", async () => {
+    const author = await makeActor();
+    const threadId = await makeThread(author);
+
+    const first = await createReply(db, author, threadId, BODY, NOW);
+    await createReply(db, author, threadId, BODY, NOW);
+    assert.ok(first.ok);
+
+    await db.update(threads).set({ replyCount: 0 }).where(eq(threads.id, threadId));
+
+    await deletePost(db, author, first.postId, NOW);
+
+    const [row] = await db
+      .select({ replyCount: threads.replyCount })
+      .from(threads)
+      .where(eq(threads.id, threadId));
+
+    // One reply survives. A `greatest(0 - 1, 0)` would have floored at 0.
+    assert.equal(row.replyCount, 1);
+  });
+
+  it("does not count soft-deleted replies", async () => {
+    const author = await makeActor();
+    const threadId = await makeThread(author);
+
+    const a = await createReply(db, author, threadId, BODY, NOW);
+    await createReply(db, author, threadId, BODY, NOW);
+    assert.ok(a.ok);
+    await deletePost(db, author, a.postId, NOW);
+
+    const [row] = await db
+      .select({ replyCount: threads.replyCount })
+      .from(threads)
+      .where(eq(threads.id, threadId));
+
+    assert.equal(row.replyCount, 1);
+  });
+
+  it("recomputes vote_score from the votes themselves", async () => {
+    const author = await makeActor();
+    const voter = await makeActor();
+    const other = await makeActor();
+    const threadId = await makeThread(author);
+
+    await castVote(db, voter, "thread", threadId, 1, NOW);
+
+    await db.update(threads).set({ voteScore: -50 }).where(eq(threads.id, threadId));
+
+    const result = await castVote(db, other, "thread", threadId, 1, NOW);
+
+    // Two upvotes. A `+ delta` would have returned -49.
+    assert.equal(result.score, 2);
+  });
+
+  it("recomputes vote_score when a vote is retracted", async () => {
+    const author = await makeActor();
+    const voter = await makeActor();
+    const threadId = await makeThread(author);
+
+    await castVote(db, voter, "thread", threadId, 1, NOW);
+    const retracted = await castVote(db, voter, "thread", threadId, 1, NOW);
+
+    assert.equal(retracted.score, 0);
+    assert.equal(retracted.userVote, 0);
+  });
+
+  it("scores a flipped vote from the stored rows, not a doubled delta", async () => {
+    const author = await makeActor();
+    const voter = await makeActor();
+    const threadId = await makeThread(author);
+
+    await castVote(db, voter, "thread", threadId, 1, NOW);
+    const flipped = await castVote(db, voter, "thread", threadId, -1, NOW);
+
+    assert.equal(flipped.score, -1);
+    assert.equal(flipped.userVote, -1);
+  });
+
+  it("keeps thread and post scores independent for the same id", async () => {
+    // thread 1 and post 1 are different targets; the enum discriminates them.
+    const author = await makeActor();
+    const voter = await makeActor();
+    const threadId = await makeThread(author);
+    const reply = await createReply(db, author, threadId, BODY, NOW);
+    assert.ok(reply.ok);
+
+    await castVote(db, voter, "thread", threadId, 1, NOW);
+    const postScore = await castVote(db, voter, "post", reply.postId, -1, NOW);
+
+    const [row] = await db
+      .select({ voteScore: threads.voteScore })
+      .from(threads)
+      .where(eq(threads.id, threadId));
+
+    assert.equal(row.voteScore, 1);
+    assert.equal(postScore.score, -1);
+  });
+});

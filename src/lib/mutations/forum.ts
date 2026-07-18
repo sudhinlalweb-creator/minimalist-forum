@@ -24,10 +24,21 @@ import { slugify } from "../slug";
  *
  *  1. Authorisation happens here, not in the UI. Every mutation runs through
  *     `assertCan`, so a hand-crafted request cannot bypass a hidden button.
- *  2. Denormalised counters (`reply_count`, `vote_score`, `last_posted_at`) are
- *     updated in the same statement batch as the row that changes them. Neon's
- *     HTTP driver has no interactive transactions, so `db.batch()` is what
- *     gives us atomicity — Neon runs a batch as a single transaction.
+ *  2. Denormalised counters (`reply_count`, `vote_score`, `tags.thread_count`)
+ *     are DERIVED, not adjusted by a delta. Each is recomputed from the rows
+ *     it summarises, so the write is idempotent and self-repairing.
+ *
+ *     This is not a stylistic choice. The app runs on Neon's HTTP driver,
+ *     which has no interactive transactions, so a mutation and its counter
+ *     update are separate round trips with nothing binding them. A `+ 1` that
+ *     fails drifts the counter permanently — nothing recomputes it, and the
+ *     error surface is a number that is quietly wrong forever. A recomputed
+ *     counter converges instead: the next successful write repairs it.
+ *
+ *     `db.batch()` would give real atomicity, but it is a neon-http API that
+ *     the PGlite driver used by tests does not implement, so a batched write
+ *     path could not be exercised by the suite. Deriving the counters removes
+ *     the need for atomicity rather than papering over the lack of it.
  */
 
 const MAX_TITLE_LENGTH = 200;
@@ -186,12 +197,17 @@ export async function createReply(
     })
     .returning({ id: posts.id });
 
-  // Counter and freshness stamp move with the insert. `last_posted_at` drives
+  // Counter and freshness stamp follow the insert. `last_posted_at` drives
   // feed ordering and `updated_at` feeds JSON-LD dateModified.
+  //
+  // The count is recomputed rather than incremented: this is a second round
+  // trip over Neon's HTTP driver with no transaction around it, so a `+ 1`
+  // that fails leaves the counter permanently short. Deriving it means the
+  // next successful write repairs the drift instead of compounding it.
   await db
     .update(threads)
     .set({
-      replyCount: sql`${threads.replyCount} + 1`,
+      replyCount: sql`(SELECT count(*) FROM ${posts} WHERE ${posts.threadId} = ${threadId} AND ${posts.isDeleted} = false)`,
       lastPostedAt: now,
       updatedAt: now,
     })
@@ -305,9 +321,14 @@ export async function deletePost(
     .set({ isDeleted: true, deletedAt: now })
     .where(eq(posts.id, postId));
 
+  // Derived, not decremented — same reasoning as createReply. The `greatest`
+  // floor this replaces was a symptom: a counter that can go negative is one
+  // that has already drifted.
   await db
     .update(threads)
-    .set({ replyCount: sql`greatest(${threads.replyCount} - 1, 0)` })
+    .set({
+      replyCount: sql`(SELECT count(*) FROM ${posts} WHERE ${posts.threadId} = ${post.threadId} AND ${posts.isDeleted} = false)`,
+    })
     .where(eq(threads.id, post.threadId));
 
   return { ok: true };
@@ -375,7 +396,9 @@ export async function castVote(
     )
     .limit(1);
 
-  let delta = 0;
+  // Voting the same way twice retracts; voting the other way flips. Only the
+  // caller's own state is tracked here — the score is derived from the vote
+  // rows below, so there is no delta to keep in step with them.
   let userVote = 0;
 
   if (!existing) {
@@ -386,23 +409,27 @@ export async function castVote(
       value,
       createdAt: now,
     });
-    delta = value;
     userVote = value;
   } else if (existing.value === value) {
     await db.delete(votes).where(eq(votes.id, existing.id));
-    delta = -value;
     userVote = 0;
   } else {
     await db.update(votes).set({ value }).where(eq(votes.id, existing.id));
-    // Flipping is worth two points, not one.
-    delta = value * 2;
     userVote = value;
   }
 
   const table = targetType === "thread" ? threads : posts;
+
+  // Summed from the votes themselves rather than nudged by a delta. The vote
+  // row and the score are two round trips with no transaction between them,
+  // and a lost update here is visible to every reader of the thread. The
+  // parameter is cast to the enum so `votes_target_idx` is still usable —
+  // casting the column instead would work but discard the index.
   const [updated] = await db
     .update(table)
-    .set({ voteScore: sql`${table.voteScore} + ${delta}` })
+    .set({
+      voteScore: sql`(SELECT coalesce(sum(${votes.value}), 0)::int FROM ${votes} WHERE ${votes.targetType} = ${targetType}::target_type AND ${votes.targetId} = ${targetId})`,
+    })
     .where(eq(table.id, targetId))
     .returning({ score: table.voteScore });
 
