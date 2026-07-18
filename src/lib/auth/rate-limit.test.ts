@@ -171,3 +171,105 @@ describe("degenerate input", () => {
     assert.equal(r.allowed, true);
   });
 });
+
+describe("content flood limits", () => {
+  const NOW = new Date("2026-07-19T12:00:00.000Z");
+
+  /** Exhausts a bucket by recording `n` attempts for one actor. */
+  async function burn(
+    action: "create_thread" | "create_reply" | "cast_vote",
+    identifier: string,
+    n: number,
+  ) {
+    for (let i = 0; i < n; i++) {
+      await recordAttempt(db, action, { identifier }, NOW);
+    }
+  }
+
+  it("blocks thread creation past the per-account limit", async () => {
+    const actor = "flood-threads";
+    await burn("create_thread", actor, 10);
+
+    const verdict = await checkRateLimit(
+      db,
+      "create_thread",
+      { identifier: actor },
+      NOW,
+    );
+    assert.equal(verdict.allowed, false);
+    assert.ok(verdict.retryAfter);
+  });
+
+  it("lets a normal posting rate through untouched", async () => {
+    const actor = "normal-poster";
+    // Three threads in an hour is ordinary use, not flooding.
+    await burn("create_thread", actor, 3);
+
+    const verdict = await checkRateLimit(
+      db,
+      "create_thread",
+      { identifier: actor },
+      NOW,
+    );
+    assert.equal(verdict.allowed, true);
+  });
+
+  it("meters replies more generously than threads", async () => {
+    const actor = "chatty";
+    // 15 replies would have blocked a thread bucket; replies should allow it.
+    await burn("create_reply", actor, 15);
+
+    const verdict = await checkRateLimit(
+      db,
+      "create_reply",
+      { identifier: actor },
+      NOW,
+    );
+    assert.equal(verdict.allowed, true);
+  });
+
+  it("keeps buckets independent per action", async () => {
+    const actor = "mixed";
+    await burn("create_thread", actor, 10);
+
+    // Exhausting threads must not stop the same user replying or voting.
+    for (const action of ["create_reply", "cast_vote"] as const) {
+      const verdict = await checkRateLimit(db, action, { identifier: actor }, NOW);
+      assert.equal(verdict.allowed, true, `${action} should be unaffected`);
+    }
+  });
+
+  it("frees the bucket once the window rolls past", async () => {
+    const actor = "patient";
+    await burn("create_thread", actor, 10);
+
+    const later = new Date(NOW.getTime() + 61 * 60 * 1000);
+    const verdict = await checkRateLimit(
+      db,
+      "create_thread",
+      { identifier: actor },
+      later,
+    );
+    assert.equal(verdict.allowed, true);
+  });
+
+  it("separates two accounts on the same action", async () => {
+    await burn("cast_vote", "voter-a", 200);
+
+    const blocked = await checkRateLimit(
+      db,
+      "cast_vote",
+      { identifier: "voter-a" },
+      NOW,
+    );
+    const other = await checkRateLimit(
+      db,
+      "cast_vote",
+      { identifier: "voter-b" },
+      NOW,
+    );
+
+    assert.equal(blocked.allowed, false);
+    assert.equal(other.allowed, true);
+  });
+});

@@ -13,10 +13,16 @@ import type { AppDb } from "../db/types";
  */
 
 export type RateLimitedAction =
+  // Auth: brute-force protection.
   | "login"
   | "register"
   | "password_reset_request"
-  | "email_verification_resend";
+  | "email_verification_resend"
+  // Content: flood protection. A verified account posting faster than a human
+  // can type is either scripted or broken, and both are worth stopping.
+  | "create_thread"
+  | "create_reply"
+  | "cast_vote";
 
 interface Policy {
   limit: number;
@@ -32,6 +38,14 @@ const ACCOUNT_POLICY: Record<RateLimitedAction, Policy> = {
   register: { limit: 3, windowMs: HOUR },
   password_reset_request: { limit: 3, windowMs: HOUR },
   email_verification_resend: { limit: 3, windowMs: HOUR },
+  // Content limits sit well above real use and only bite scripted flooding —
+  // a rate limit a genuine user can hit is a bug report waiting to happen.
+  create_thread: { limit: 10, windowMs: HOUR },
+  create_reply: { limit: 40, windowMs: HOUR },
+  // Votes are single clicks, and the unique index on (user, target) already
+  // stops repeat voting from moving a score. This is load protection, so it
+  // can afford to be loose.
+  cast_vote: { limit: 200, windowMs: HOUR },
 };
 
 /** Per-IP limits — looser, since NAT means many users share an address. */
@@ -40,6 +54,11 @@ const IP_POLICY: Record<RateLimitedAction, Policy> = {
   register: { limit: 5, windowMs: HOUR },
   password_reset_request: { limit: 10, windowMs: HOUR },
   email_verification_resend: { limit: 10, windowMs: HOUR },
+  // Deliberately several times the per-account limit: an office or campus
+  // behind one NAT address is a normal thing, not an attack.
+  create_thread: { limit: 30, windowMs: HOUR },
+  create_reply: { limit: 120, windowMs: HOUR },
+  cast_vote: { limit: 600, windowMs: HOUR },
 };
 
 export interface RateLimitResult {

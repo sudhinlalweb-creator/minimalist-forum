@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 
@@ -17,32 +16,12 @@ import {
   clearAttempts,
   recordAttempt,
 } from "@/lib/auth/rate-limit";
+import { clientIp, tooManyMessage } from "@/lib/auth/request-context";
 import { getDb } from "@/lib/db";
 
 export interface FormState {
   error?: string;
   notice?: string;
-}
-
-/**
- * Best-effort client address for rate limiting. Behind Vercel this is set by
- * the platform; locally it is usually absent, in which case only the
- * per-account bucket applies.
- */
-async function clientIp(): Promise<string | null> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]!.trim();
-  return h.get("x-real-ip");
-}
-
-function tooManyMessage(retryAfter: Date | null): string {
-  if (!retryAfter) return "Too many attempts. Please try again later.";
-  const minutes = Math.max(
-    1,
-    Math.ceil((retryAfter.getTime() - Date.now()) / 60_000),
-  );
-  return `Too many attempts. Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
 }
 
 async function guard(

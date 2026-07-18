@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 
 import { getActor } from "@/lib/auth/current-user";
 import { ForbiddenError, can } from "@/lib/auth/permissions";
+import {
+  type RateLimitedAction,
+  checkRateLimit,
+  recordAttempt,
+} from "@/lib/auth/rate-limit";
+import { clientIp, tooManyMessage } from "@/lib/auth/request-context";
 import { getDb } from "@/lib/db";
 import {
   CONTENT_LIMITS,
@@ -29,6 +35,30 @@ const ISSUE_MESSAGES: Record<string, string> = {
   post_not_found: "That reply no longer exists.",
 };
 
+/**
+ * Rate-limit gate for content actions.
+ *
+ * The attempt is recorded up front, unlike the auth flows which only count
+ * failures. A successful post is exactly what we are throttling here, so
+ * charging only failures would leave flooding unmetered.
+ *
+ * The account id is the primary bucket. IP is a secondary signal and often
+ * absent locally, so a signed-in actor is always metered even without it.
+ */
+async function contentGuard(
+  action: RateLimitedAction,
+  actorId: string,
+): Promise<string | null> {
+  const db = await getDb();
+  const ip = await clientIp();
+
+  const verdict = await checkRateLimit(db, action, { identifier: actorId, ip });
+  if (!verdict.allowed) return tooManyMessage(verdict.retryAfter);
+
+  await recordAttempt(db, action, { identifier: actorId, ip });
+  return null;
+}
+
 export async function createThreadAction(
   _prev: ForumFormState,
   formData: FormData,
@@ -41,6 +71,9 @@ export async function createThreadAction(
         : "Sign in to start a thread.",
     };
   }
+
+  const blocked = await contentGuard("create_thread", actor.id);
+  if (blocked) return { error: blocked };
 
   const db = await getDb();
   const categoryId = Number(formData.get("categoryId"));
@@ -89,6 +122,9 @@ export async function createReplyAction(
   const threadId = Number(formData.get("threadId"));
   if (!Number.isSafeInteger(threadId)) return { error: "Couldn't post that reply." };
 
+  const blocked = await contentGuard("create_reply", actor.id);
+  if (blocked) return { error: blocked };
+
   const db = await getDb();
 
   let result;
@@ -122,6 +158,9 @@ export async function voteAction(
       error: actor.id ? "Confirm your email address to vote." : "Sign in to vote.",
     };
   }
+
+  const blocked = await contentGuard("cast_vote", actor.id);
+  if (blocked) return { error: blocked };
 
   const db = await getDb();
   try {
